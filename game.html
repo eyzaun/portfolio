@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dijital Macera | Eyüp Zafer Ünal</title>
+    <link rel="stylesheet" href="css/game.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <div id="loading-screen">
+            <div class="spinner"></div>
+            <p>Dijital Dünya Yükleniyor...</p>
+        </div>
+        
+        <div id="ui-overlay">
+            <div class="top-bar">
+                <div class="progress-container">
+                    <div class="progress-label">İlerleme</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+                <div class="items-collected">
+                    <i class="fas fa-code"></i> <span id="code-fragments">0</span>/5
+                </div>
+            </div>
+            
+            <div id="story-dialog" class="story-dialog hidden">
+                <div class="dialog-content">
+                    <h3 id="dialog-title">Hoş Geldin, Gezgin</h3>
+                    <p id="dialog-text">Dijital dünyaya hoş geldin. Burası kodların ve yaratıcılığın kesiştiği bir yer. Kayıp kod parçalarını bularak gerçek dünyaya dönmeye çalışmalısın.</p>
+                </div>
+                <button id="dialog-continue" class="btn">Devam Et</button>
+            </div>
+            
+            <div class="controls-hint">
+                <p>Kontroller: WASD veya Ok Tuşları ile Hareket Et | Boşluk: Zıpla | E: Etkileşim</p>
+            </div>
+            
+            <div class="game-menu">
+                <button id="menu-button" class="btn menu-btn">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div id="menu-panel" class="menu-panel hidden">
+                    <h3>Oyun Menüsü</h3>
+                    <button id="restart-button" class="btn menu-option">Yeniden Başla</button>
+                    <button id="back-to-portfolio" class="btn menu-option">Portfolyoya Dön</button>
+                    <button id="close-menu" class="btn close-btn"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Three.js first -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    
+    <!-- GLTFLoader -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/loaders/GLTFLoader.min.js"></script>
+    
+    <!-- Load game script directly - no CANNON dependency -->
+    <script src="js/game.js"></script>
+</body>
+</html>
