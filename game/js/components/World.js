@@ -213,7 +213,7 @@ export class World {
     }
     
     addWindows(building, width, height, depth) {
-        const windowMaterial = new THREE.MeshBasicMaterial({ 
+        const windowMaterial = new THREE.MeshLambertMaterial({ 
             color: Math.random() > 0.3 ? 0xffff88 : 0x333333,
             emissive: Math.random() > 0.3 ? 0x222200 : 0x000000
         });

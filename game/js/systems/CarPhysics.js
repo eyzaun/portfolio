@@ -71,8 +71,8 @@ export class CarPhysics {
     updateEngineForce(throttle) {
         const engineForce = throttle * this.acceleration;
         
-        // Calculate car's forward vector
-        const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.car.mesh.quaternion);
+        // Calculate car's forward vector (negative Z for proper forward direction)
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.car.mesh.quaternion);
         
         // Apply engine force in forward direction
         const engineVector = forward.clone().multiplyScalar(engineForce);
@@ -80,19 +80,28 @@ export class CarPhysics {
     }
     
     updateBrakeForce(brakeInput, handbrake) {
-        const totalBrakeForce = brakeInput * this.brakeForce + 
-                               (handbrake ? this.brakeForce * 1.5 : 0);
+        // Apply regular braking only if not handbraking
+        if (!handbrake && brakeInput > 0) {
+            const totalBrakeForce = brakeInput * this.brakeForce;
+            
+            // Apply braking force opposite to velocity direction
+            if (this.speed > 0.01) {
+                const brakeVector = this.velocity.clone().normalize().multiplyScalar(-totalBrakeForce);
+                this.velocity.add(brakeVector);
+            }
+        }
         
-        // Apply braking force opposite to velocity direction
-        if (this.speed > 0.01) {
-            const brakeVector = this.velocity.clone().normalize().multiplyScalar(-totalBrakeForce);
+        // Handbrake applies lighter braking to allow drift
+        if (handbrake && this.speed > 0.01) {
+            const handbrakeForce = this.brakeForce * 0.3; // Much lighter braking
+            const brakeVector = this.velocity.clone().normalize().multiplyScalar(-handbrakeForce);
             this.velocity.add(brakeVector);
         }
     }
     
     updateLateralFriction(handbrake) {
-        // Calculate car's forward and right vectors
-        const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.car.mesh.quaternion);
+        // Calculate car's forward and right vectors (corrected directions)
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.car.mesh.quaternion);
         const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.car.mesh.quaternion);
         
         // Calculate drift
@@ -171,8 +180,8 @@ export class CarPhysics {
         
         const particle = new THREE.Mesh(particleGeometry, particleMaterial);
         
-        // Position behind the car
-        const carBack = new THREE.Vector3(0, 0, -2).applyQuaternion(this.car.mesh.quaternion);
+        // Position behind the car (using corrected forward vector)
+        const carBack = new THREE.Vector3(0, 0, 2).applyQuaternion(this.car.mesh.quaternion);
         particle.position.copy(this.car.mesh.position).add(carBack);
         particle.position.y = 0.1;
         

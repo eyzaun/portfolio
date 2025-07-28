@@ -93,10 +93,10 @@ export class CarControls {
         const targetBrake = this.keys.brake ? 1 : 0;
         this.inputSmoothing.brake += (targetBrake - this.inputSmoothing.brake) * this.smoothingFactor;
         
-        // Steering input
+        // Steering input (corrected directions)
         let targetSteering = 0;
-        if (this.keys.left) targetSteering = 1;
-        if (this.keys.right) targetSteering = -1;
+        if (this.keys.left) targetSteering = -1;  // Left should be negative
+        if (this.keys.right) targetSteering = 1;   // Right should be positive
         this.inputSmoothing.steering += (targetSteering - this.inputSmoothing.steering) * this.smoothingFactor * 2;
     }
     
