@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Drift Racing | Eyüp Zafer ÜNAL</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/portfolio/assets/game-B9xJzRXs.js"></script>
+  <link rel="modulepreload" crossorigin href="/portfolio/assets/modulepreload-polyfill-B5Qt9EMX.js">
+  <link rel="stylesheet" crossorigin href="/portfolio/assets/game-C3aGswpC.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="loading-screen">
+            <div class="spinner"></div>
+            <p>Portfolio Drift Racing Yükleniyor...</p>
+        </div>
+        
+        <div id="ui-overlay">
+            <div class="top-bar">
+                <div class="progress-container">
+                    <div class="progress-label">Portfolio Toplama İlerlemesi</div>
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill"></div>
+                    </div>
+                </div>
+                <div class="items-collected">
+                    <i class="fas fa-trophy"></i>
+                    <span id="code-fragments">0/15</span>
+                </div>
+            </div>
+            
+            <div id="story-dialog" class="story-dialog hidden">
+                <div class="dialog-content">
+                    <h3 id="dialog-title">Başlık</h3>
+                    <p id="dialog-text">Metin içeriği buraya gelecek...</p>
+                </div>
+                <button id="dialog-continue" class="btn">Devam Et</button>
+            </div>
+            
+            <div class="controls-hint">
+                <p><strong>Kontroller:</strong> WASD - Hareket | SPACE - Drift | ESC - Menü</p>
+            </div>
+            
+            <div class="game-menu">
+                <button id="menu-button" class="btn menu-btn">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div id="menu-panel" class="menu-panel hidden">
+                    <h3>Oyun Menüsü</h3>
+                    <button id="restart-button" class="btn menu-option">Yeniden Başla</button>
+                    <button id="back-to-portfolio" class="btn menu-option">Portfolyoya Dön</button>
+                    <button id="close-menu" class="btn close-btn"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Three.js first -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    
+    <!-- Load game script -->
+</body>
+</html>
