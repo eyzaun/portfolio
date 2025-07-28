@@ -1,119 +1,126 @@
-// Simplified 3D game with pure Three.js physics - NO CANNON dependencies
+// 3D Car Drift Game - Portfolio Collection Adventure
+// Developed by Eyüp Zafer ÜNAL
 
-// Debug message to check if the correct file is loaded
-console.log("Loading NEW simplified game.js - VERSION 2.0");
+console.log("Loading Portfolio Drift Racing Game - VERSION 3.0");
 
-class Game {
+class PortfolioDriftGame {
     constructor() {
-        console.log("Game constructor started");
+        console.log("Portfolio Drift Game starting...");
         this.initialized = false;
         this.loading = true;
-        this.codeFragments = 0;
-        this.totalFragments = 5;
-        this.progress = 0;
-        this.currentStoryIndex = 0;
         
-        // Simple physics variables
-        this.gravity = 0.015;
-        this.velocity = new THREE.Vector3(0, 0, 0);
-        this.isOnGround = false;
-        this.colliders = [];
+        // Game statistics
+        this.projectsCollected = 0;
+        this.skillsCollected = 0;
+        this.experienceCollected = 0;
+        this.totalCollectibles = 15;
+        this.score = 0;
+        this.speed = 0;
+        this.drift = false;
+        this.driftScore = 0;
         
-        // Story points for the game
-        this.storyPoints = [
-            {
-                title: "Hoş Geldin, Gezgin",
-                text: "Dijital dünyaya hoş geldin. Ben Eyüp, portfolyo kodlarımın içinden sana ulaşıyorum. Bu sanal dünyada kaybolmuş kod parçalarımı bulmam gerekiyor. Bana yardım edecek misin?"
-            },
-            {
-                title: "İlk Kod Parçası",
-                text: "Harika! İlk kod parçasını buldun. Bu HTML'in temel yapısını içeriyor. Web geliştiriciliğinin temeli HTML ile başlar ve sayfaların iskeletini oluşturur."
-            },
-            // ...other story points
-        ];
+        // Car physics
+        this.carSpeed = 0;
+        this.maxSpeed = 0.8;
+        this.acceleration = 0.02;
+        this.friction = 0.95;
+        this.turnSpeed = 0.03;
+        this.driftFactor = 0.9;
         
+        // Controls
+        this.keys = {
+            accelerate: false,
+            brake: false,
+            left: false,
+            right: false,
+            handbrake: false
+        };
+        
+        // Portfolio data from CV
+        this.portfolioData = {
+            projects: [
+                { name: "AvukatLLM", tech: "AI/ML", points: 100, color: 0xff6b6b },
+                { name: "GoDash", tech: "Go", points: 80, color: 0x4ecdc4 },
+                { name: "MyYDS", tech: "React", points: 90, color: 0x45b7d1 },
+                { name: "TYT Platform", tech: "PWA", points: 85, color: 0x96ceb4 },
+                { name: "LinkedHU", tech: "Node.js", points: 75, color: 0xffeaa7 }
+            ],
+            skills: [
+                { name: "JavaScript", level: 90, color: 0xf39c12 },
+                { name: "Python", level: 85, color: 0x3498db },
+                { name: "React", level: 80, color: 0x61dafb },
+                { name: "Three.js", level: 75, color: 0x000000 },
+                { name: "AI/ML", level: 85, color: 0xe74c3c }
+            ],
+            experiences: [
+                { company: "Binary Brain Technology", role: "Software Intern", points: 150, color: 0x9b59b6 },
+                { company: "TellUS", role: "Software Intern", points: 120, color: 0x34495e },
+                { company: "Hacettepe University", role: "Student", points: 100, color: 0x2ecc71 }
+            ]
+        };
+        
+        this.collectibles = [];
         this.init();
     }
     
     async init() {
-        console.log("Game initialization started");
+        console.log("Initializing Portfolio Drift Game...");
         try {
-            // Setup three.js scene
             this.setupScene();
-            
-            // Load assets
             await this.loadAssets();
-            
-            // Setup world and character
             this.createWorld();
-            this.createCharacter();
-            this.createCodeFragments();
-            
-            // Setup event listeners
-            this.setupEventListeners();
-            
-            // Hide loading screen
+            this.createCar();
+            this.createCollectibles();
+            this.setupControls();
+            this.setupUI();
             this.hideLoadingScreen();
-            
-            // Show first story dialog
-            this.showStoryDialog();
-            
-            // Start game loop
+            this.showWelcomeDialog();
             this.gameLoop();
             
             this.initialized = true;
-            console.log("Game successfully initialized");
+            console.log("Portfolio Drift Game successfully initialized!");
         } catch (error) {
-            console.error("Error during initialization:", error);
-            alert("Oyun yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.");
-            
-            // Show error message
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) {
-                const errorMsg = document.createElement('p');
-                errorMsg.style.color = '#f50057';
-                errorMsg.style.fontSize = '18px';
-                errorMsg.style.marginTop = '20px';
-                errorMsg.textContent = 'Hata: ' + error.message;
-                loadingScreen.appendChild(errorMsg);
-                
-                const reloadBtn = document.createElement('button');
-                reloadBtn.style.marginTop = '15px';
-                reloadBtn.style.padding = '8px 16px';
-                reloadBtn.style.background = '#f50057';
-                reloadBtn.style.color = 'white';
-                reloadBtn.style.border = 'none';
-                reloadBtn.style.borderRadius = '4px';
-                reloadBtn.style.cursor = 'pointer';
-                reloadBtn.textContent = 'Yeniden Yükle';
-                reloadBtn.onclick = () => window.location.reload();
-                loadingScreen.appendChild(reloadBtn);
-            }
+            console.error("Game initialization error:", error);
+            this.showError(error.message);
         }
     }
     
     setupScene() {
-        console.log("Setting up scene");
-        // Create scene
+        console.log("Setting up 3D scene...");
+        
+        // Scene
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x050514);
+        this.scene.background = new THREE.Color(0x87CEEB); // Sky blue
+        this.scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
         
-        // Create camera
+        // Camera
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        this.camera.position.set(0, 2, 5);
+        this.camera.position.set(0, 10, 15);
         
-        // Create renderer
+        // Renderer
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        
         document.getElementById('game-container').appendChild(this.renderer.domElement);
         
-        // Add lights
-        const ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         this.scene.add(ambientLight);
         
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(1, 10, 5);
+        directionalLight.position.set(50, 100, 50);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 500;
+        directionalLight.shadow.camera.left = -100;
+        directionalLight.shadow.camera.right = 100;
+        directionalLight.shadow.camera.top = 100;
+        directionalLight.shadow.camera.bottom = -100;
         this.scene.add(directionalLight);
         
         // Handle window resize
@@ -126,185 +133,309 @@ class Game {
     
     async loadAssets() {
         return new Promise((resolve) => {
-            console.log("Loading assets (simulated)");
+            console.log("Loading game assets...");
+            // Simulate asset loading
             setTimeout(() => {
                 resolve();
-            }, 1000);
+            }, 1500);
         });
     }
     
     createWorld() {
-        console.log("Creating world");
-        // Ground plane
-        const groundGeometry = new THREE.PlaneGeometry(50, 50);
-        const groundMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x3a3a5a,
-            roughness: 0.8
+        console.log("Creating race track world...");
+        
+        // Ground/Track
+        const trackGeometry = new THREE.PlaneGeometry(200, 200);
+        const trackMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0x333333,
+            transparent: true,
+            opacity: 0.8
         });
-        this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
-        this.ground.rotation.x = -Math.PI / 2;
-        this.ground.position.y = 0;
-        this.scene.add(this.ground);
-        this.colliders.push(this.ground);
+        this.track = new THREE.Mesh(trackGeometry, trackMaterial);
+        this.track.rotation.x = -Math.PI / 2;
+        this.track.receiveShadow = true;
+        this.scene.add(this.track);
         
-        // Create some platforms
-        const platformPositions = [
-            { x: 5, y: 0.5, z: 5 },
-            { x: 10, y: 1, z: 8 },
-            { x: -5, y: 0.5, z: -5 }
-        ];
+        // Track borders and obstacles
+        this.createTrackBorders();
+        this.createBuildings();
+    }
+    
+    createTrackBorders() {
+        const borderMaterial = new THREE.MeshLambertMaterial({ color: 0xff4757 });
         
-        platformPositions.forEach(pos => {
-            const platform = new THREE.Mesh(
-                new THREE.BoxGeometry(3, 0.5, 3),
-                new THREE.MeshStandardMaterial({ color: 0x6c63ff })
+        // Create circular track borders
+        const borderPositions = [];
+        const radius = 80;
+        const segments = 32;
+        
+        for (let i = 0; i < segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            borderPositions.push({ x, z });
+        }
+        
+        borderPositions.forEach((pos, index) => {
+            const border = new THREE.Mesh(
+                new THREE.BoxGeometry(4, 3, 4),
+                borderMaterial
             );
-            platform.position.set(pos.x, pos.y, pos.z);
-            this.scene.add(platform);
-            this.colliders.push(platform);
+            border.position.set(pos.x, 1.5, pos.z);
+            border.castShadow = true;
+            this.scene.add(border);
         });
     }
     
-    createCharacter() {
-        console.log("Creating character");
-        // Simple character
-        this.character = new THREE.Group();
+    createBuildings() {
+        const buildingMaterials = [
+            new THREE.MeshLambertMaterial({ color: 0x6c5ce7 }),
+            new THREE.MeshLambertMaterial({ color: 0xa29bfe }),
+            new THREE.MeshLambertMaterial({ color: 0x74b9ff }),
+            new THREE.MeshLambertMaterial({ color: 0x0984e3 })
+        ];
         
-        // Body
-        const body = new THREE.Mesh(
-            new THREE.BoxGeometry(1, 1.5, 1),
-            new THREE.MeshStandardMaterial({ color: 0x00aaff })
-        );
-        this.character.add(body);
+        // Create random buildings around the track
+        for (let i = 0; i < 20; i++) {
+            const building = new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    Math.random() * 8 + 4,
+                    Math.random() * 15 + 5,
+                    Math.random() * 8 + 4
+                ),
+                buildingMaterials[Math.floor(Math.random() * buildingMaterials.length)]
+            );
+            
+            // Position buildings outside the track
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 100 + Math.random() * 50;
+            building.position.set(
+                Math.cos(angle) * distance,
+                building.geometry.parameters.height / 2,
+                Math.sin(angle) * distance
+            );
+            
+            building.castShadow = true;
+            this.scene.add(building);
+        }
+    }
+    
+    createCar() {
+        console.log("Creating player car...");
         
-        // Head
-        const head = new THREE.Mesh(
-            new THREE.SphereGeometry(0.5),
-            new THREE.MeshStandardMaterial({ color: 0xffaa00 })
-        );
-        head.position.y = 1;
-        this.character.add(head);
+        this.car = new THREE.Group();
         
-        // Add to scene
-        this.character.position.set(0, 1, 0);
-        this.scene.add(this.character);
+        // Car body
+        const bodyGeometry = new THREE.BoxGeometry(4, 1, 8);
+        const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0xe17055 });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.position.y = 0.5;
+        body.castShadow = true;
+        this.car.add(body);
         
-        // Movement controls
-        this.moveSpeed = 0.1;
-        this.jumpPower = 0.25;
-        this.canJump = true;
+        // Car roof
+        const roofGeometry = new THREE.BoxGeometry(3, 1, 4);
+        const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x2d3436 });
+        const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+        roof.position.y = 1.5;
+        roof.castShadow = true;
+        this.car.add(roof);
         
-        this.keys = {
-            forward: false,
-            backward: false,
-            left: false,
-            right: false,
-            jump: false
+        // Wheels
+        const wheelGeometry = new THREE.CylinderGeometry(0.8, 0.8, 0.5);
+        const wheelMaterial = new THREE.MeshLambertMaterial({ color: 0x2d3436 });
+        
+        const wheelPositions = [
+            { x: -1.8, z: 2.5 },  // Front left
+            { x: 1.8, z: 2.5 },   // Front right
+            { x: -1.8, z: -2.5 }, // Rear left
+            { x: 1.8, z: -2.5 }   // Rear right
+        ];
+        
+        this.wheels = [];
+        wheelPositions.forEach((pos, index) => {
+            const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            wheel.position.set(pos.x, 0, pos.z);
+            wheel.rotation.z = Math.PI / 2;
+            wheel.castShadow = true;
+            this.car.add(wheel);
+            this.wheels.push(wheel);
+        });
+        
+        // Car initial position
+        this.car.position.set(0, 0, 0);
+        this.carVelocity = new THREE.Vector3(0, 0, 0);
+        this.carDirection = 0;
+        
+        this.scene.add(this.car);
+    }
+    
+    createCollectibles() {
+        console.log("Creating portfolio collectibles...");
+        
+        // Create project collectibles
+        this.portfolioData.projects.forEach((project, index) => {
+            const collectible = this.createCollectible(
+                project.name,
+                project.tech,
+                project.color,
+                'project',
+                project.points
+            );
+            
+            // Position around the track
+            const angle = (index / this.portfolioData.projects.length) * Math.PI * 2;
+            const radius = 30;
+            collectible.position.set(
+                Math.cos(angle) * radius,
+                2,
+                Math.sin(angle) * radius
+            );
+            
+            this.collectibles.push(collectible);
+            this.scene.add(collectible);
+        });
+        
+        // Create skill collectibles
+        this.portfolioData.skills.forEach((skill, index) => {
+            const collectible = this.createCollectible(
+                skill.name,
+                `${skill.level}%`,
+                skill.color,
+                'skill',
+                skill.level
+            );
+            
+            // Position in inner circle
+            const angle = (index / this.portfolioData.skills.length) * Math.PI * 2;
+            const radius = 15;
+            collectible.position.set(
+                Math.cos(angle) * radius,
+                2,
+                Math.sin(angle) * radius
+            );
+            
+            this.collectibles.push(collectible);
+            this.scene.add(collectible);
+        });
+        
+        // Create experience collectibles
+        this.portfolioData.experiences.forEach((exp, index) => {
+            const collectible = this.createCollectible(
+                exp.company,
+                exp.role,
+                exp.color,
+                'experience',
+                exp.points
+            );
+            
+            // Position in outer circle
+            const angle = (index / this.portfolioData.experiences.length) * Math.PI * 2;
+            const radius = 50;
+            collectible.position.set(
+                Math.cos(angle) * radius,
+                2,
+                Math.sin(angle) * radius
+            );
+            
+            this.collectibles.push(collectible);
+            this.scene.add(collectible);
+        });
+    }
+    
+    createCollectible(name, subtitle, color, type, points) {
+        const group = new THREE.Group();
+        
+        // Main collectible shape
+        const geometry = new THREE.OctahedronGeometry(1.5);
+        const material = new THREE.MeshLambertMaterial({ 
+            color: color,
+            emissive: color,
+            emissiveIntensity: 0.3
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.castShadow = true;
+        group.add(mesh);
+        
+        // Floating animation
+        group.userData = {
+            name: name,
+            subtitle: subtitle,
+            type: type,
+            points: points,
+            collected: false,
+            originalY: 2,
+            floatOffset: Math.random() * Math.PI * 2
         };
         
+        return group;
+    }
+    
+    
+    setupControls() {
+        console.log("Setting up car controls...");
+        
+        // Keyboard controls
         window.addEventListener('keydown', (e) => {
-            switch(e.key) {
-                case 'w': case 'ArrowUp': this.keys.forward = true; break;
-                case 's': case 'ArrowDown': this.keys.backward = true; break;
-                case 'a': case 'ArrowLeft': this.keys.left = true; break;
-                case 'd': case 'ArrowRight': this.keys.right = true; break;
-                case ' ': this.keys.jump = true; break;
-                case 'e': this.interactWithNearbyObjects(); break;
-                case 'Escape': this.toggleMenu(); break;
+            switch(e.key.toLowerCase()) {
+                case 'w':
+                case 'arrowup':
+                    this.keys.accelerate = true;
+                    break;
+                case 's':
+                case 'arrowdown':
+                    this.keys.brake = true;
+                    break;
+                case 'a':
+                case 'arrowleft':
+                    this.keys.left = true;
+                    break;
+                case 'd':
+                case 'arrowright':
+                    this.keys.right = true;
+                    break;
+                case ' ':
+                    this.keys.handbrake = true;
+                    e.preventDefault();
+                    break;
+                case 'escape':
+                    this.toggleMenu();
+                    break;
             }
         });
         
         window.addEventListener('keyup', (e) => {
-            switch(e.key) {
-                case 'w': case 'ArrowUp': this.keys.forward = false; break;
-                case 's': case 'ArrowDown': this.keys.backward = false; break;
-                case 'a': case 'ArrowLeft': this.keys.left = false; break;
-                case 'd': case 'ArrowRight': this.keys.right = false; break;
-                case ' ': this.keys.jump = false; break;
+            switch(e.key.toLowerCase()) {
+                case 'w':
+                case 'arrowup':
+                    this.keys.accelerate = false;
+                    break;
+                case 's':
+                case 'arrowdown':
+                    this.keys.brake = false;
+                    break;
+                case 'a':
+                case 'arrowleft':
+                    this.keys.left = false;
+                    break;
+                case 'd':
+                case 'arrowright':
+                    this.keys.right = false;
+                    break;
+                case ' ':
+                    this.keys.handbrake = false;
+                    break;
             }
         });
     }
     
-    createCodeFragments() {
-        console.log("Creating code fragments");
-        this.fragments = [];
+    setupUI() {
+        // Update progress display
+        this.updateUI();
         
-        const fragmentPositions = [
-            { x: 5, y: 1.5, z: 5 },
-            { x: 10, y: 2, z: 8 },
-            { x: -5, y: 1.5, z: -5 }
-        ];
-        
-        fragmentPositions.forEach((pos, index) => {
-            const fragment = new THREE.Mesh(
-                new THREE.OctahedronGeometry(0.4),
-                new THREE.MeshStandardMaterial({ 
-                    color: 0x00ffaa,
-                    emissive: 0x00aa77,
-                    emissiveIntensity: 0.5,
-                })
-            );
-            
-            fragment.position.set(pos.x, pos.y, pos.z);
-            fragment.userData.index = index;
-            this.scene.add(fragment);
-            this.fragments.push(fragment);
-        });
-    }
-    
-    interactWithNearbyObjects() {
-        this.fragments.forEach((fragment, index) => {
-            if (fragment.visible) {
-                const distance = this.character.position.distanceTo(fragment.position);
-                if (distance < 2) {
-                    fragment.visible = false;
-                    this.collectCodeFragment(index);
-                }
-            }
-        });
-    }
-    
-    collectCodeFragment(index) {
-        this.codeFragments++;
-        document.getElementById('code-fragments').textContent = this.codeFragments;
-        this.updateProgress();
-        
-        this.currentStoryIndex = index + 1;
-        this.showStoryDialog();
-        
-        if (this.codeFragments === this.fragments.length) {
-            setTimeout(() => {
-                this.currentStoryIndex = this.storyPoints.length - 1;
-                this.showStoryDialog();
-            }, 2000);
-        }
-    }
-    
-    updateProgress() {
-        this.progress = (this.codeFragments / this.fragments.length) * 100;
-        document.getElementById('progress-fill').style.width = `${this.progress}%`;
-    }
-    
-    showStoryDialog() {
-        const dialogEl = document.getElementById('story-dialog');
-        const titleEl = document.getElementById('dialog-title');
-        const textEl = document.getElementById('dialog-text');
-        
-        if (this.currentStoryIndex < this.storyPoints.length) {
-            const storyPoint = this.storyPoints[this.currentStoryIndex];
-            titleEl.textContent = storyPoint.title;
-            textEl.textContent = storyPoint.text;
-            dialogEl.classList.remove('hidden');
-        }
-    }
-    
-    hideStoryDialog() {
-        document.getElementById('story-dialog').classList.add('hidden');
-    }
-    
-    setupEventListeners() {
+        // Event listeners for UI buttons
         document.getElementById('dialog-continue').addEventListener('click', () => {
-            this.hideStoryDialog();
+            this.hideDialog();
         });
         
         document.getElementById('menu-button').addEventListener('click', () => {
@@ -324,6 +455,210 @@ class Game {
         });
     }
     
+    updateCarPhysics() {
+        // Handle acceleration and braking
+        if (this.keys.accelerate) {
+            this.carSpeed = Math.min(this.carSpeed + this.acceleration, this.maxSpeed);
+        } else if (this.keys.brake) {
+            this.carSpeed = Math.max(this.carSpeed - this.acceleration * 2, -this.maxSpeed * 0.5);
+        } else {
+            this.carSpeed *= this.friction;
+        }
+        
+        // Handle steering
+        if (this.keys.left && Math.abs(this.carSpeed) > 0.01) {
+            this.carDirection += this.turnSpeed * (this.carSpeed > 0 ? 1 : -1);
+        }
+        if (this.keys.right && Math.abs(this.carSpeed) > 0.01) {
+            this.carDirection -= this.turnSpeed * (this.carSpeed > 0 ? 1 : -1);
+        }
+        
+        // Handle handbrake for drifting
+        if (this.keys.handbrake && Math.abs(this.carSpeed) > 0.2) {
+            this.drift = true;
+            this.carSpeed *= 0.9;
+            this.driftScore += Math.abs(this.carSpeed) * 10;
+        } else {
+            this.drift = false;
+        }
+        
+        // Update car velocity based on direction
+        this.carVelocity.x = Math.sin(this.carDirection) * this.carSpeed;
+        this.carVelocity.z = Math.cos(this.carDirection) * this.carSpeed;
+        
+        // Apply drift effect
+        if (this.drift) {
+            this.carVelocity.multiplyScalar(this.driftFactor);
+        }
+        
+        // Update car position
+        this.car.position.add(this.carVelocity);
+        this.car.rotation.y = this.carDirection;
+        
+        // Animate wheels
+        this.wheels.forEach(wheel => {
+            wheel.rotation.x += this.carSpeed * 2;
+        });
+        
+        // Update speed display
+        this.speed = Math.abs(this.carSpeed) * 100;
+        document.getElementById('code-fragments').textContent = Math.floor(this.speed);
+    }
+    
+    checkCollisions() {
+        this.collectibles.forEach((collectible, index) => {
+            if (!collectible.userData.collected) {
+                const distance = this.car.position.distanceTo(collectible.position);
+                
+                if (distance < 3) {
+                    this.collectItem(collectible, index);
+                }
+            }
+        });
+        
+        // Keep car on track (simple boundary)
+        const maxDistance = 90;
+        const carDistance = Math.sqrt(this.car.position.x ** 2 + this.car.position.z ** 2);
+        
+        if (carDistance > maxDistance) {
+            // Push car back towards center
+            const angle = Math.atan2(this.car.position.z, this.car.position.x);
+            this.car.position.x = Math.cos(angle) * maxDistance;
+            this.car.position.z = Math.sin(angle) * maxDistance;
+            this.carSpeed *= 0.5; // Slow down when hitting boundary
+        }
+    }
+    
+    collectItem(collectible, index) {
+        collectible.userData.collected = true;
+        
+        // Hide collectible with animation
+        collectible.scale.set(0, 0, 0);
+        
+        // Update score and stats
+        this.score += collectible.userData.points;
+        
+        switch(collectible.userData.type) {
+            case 'project':
+                this.projectsCollected++;
+                break;
+            case 'skill':
+                this.skillsCollected++;
+                break;
+            case 'experience':
+                this.experienceCollected++;
+                break;
+        }
+        
+        // Show collection dialog
+        this.showCollectionDialog(collectible.userData);
+        
+        // Update UI
+        this.updateUI();
+        
+        // Check if all items collected
+        const totalCollected = this.projectsCollected + this.skillsCollected + this.experienceCollected;
+        if (totalCollected >= this.totalCollectibles) {
+            setTimeout(() => {
+                this.showVictoryDialog();
+            }, 2000);
+        }
+    }
+    
+    updateUI() {
+        const totalCollected = this.projectsCollected + this.skillsCollected + this.experienceCollected;
+        const progress = (totalCollected / this.totalCollectibles) * 100;
+        
+        document.getElementById('progress-fill').style.width = `${progress}%`;
+        
+        // Update the items collected display to show different categories
+        const itemsDisplay = document.getElementById('code-fragments');
+        if (itemsDisplay) {
+            itemsDisplay.textContent = `${totalCollected}/${this.totalCollectibles}`;
+        }
+    }
+    
+    animateCollectibles() {
+        this.collectibles.forEach(collectible => {
+            if (!collectible.userData.collected) {
+                // Floating animation
+                collectible.position.y = collectible.userData.originalY + 
+                    Math.sin(Date.now() * 0.003 + collectible.userData.floatOffset) * 0.5;
+                
+                // Rotation animation
+                collectible.rotation.y += 0.02;
+                collectible.rotation.x += 0.01;
+            }
+        });
+    }
+    
+    updateCamera() {
+        // Follow car with smooth camera movement
+        const idealOffset = new THREE.Vector3(0, 8, 12);
+        idealOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.carDirection);
+        
+        const idealPosition = this.car.position.clone().add(idealOffset);
+        
+        // Smooth camera movement
+        this.camera.position.lerp(idealPosition, 0.1);
+        this.camera.lookAt(this.car.position);
+    }
+    
+    showCollectionDialog(itemData) {
+        const dialogEl = document.getElementById('story-dialog');
+        const titleEl = document.getElementById('dialog-title');
+        const textEl = document.getElementById('dialog-text');
+        
+        titleEl.textContent = `${itemData.name} Toplandı!`;
+        
+        let description = '';
+        switch(itemData.type) {
+            case 'project':
+                description = `${itemData.name} projesi toplandı! Teknoloji: ${itemData.subtitle}. Bu proje portfolio deneyimimin önemli bir parçası.`;
+                break;
+            case 'skill':
+                description = `${itemData.name} yeteneği toplandı! Seviye: ${itemData.subtitle}. Bu teknolojide güçlü deneyimim var.`;
+                break;
+            case 'experience':
+                description = `${itemData.name} deneyimi toplandı! Pozisyon: ${itemData.subtitle}. Bu deneyim kariyerimde önemli bir adım.`;
+                break;
+        }
+        
+        textEl.textContent = description;
+        dialogEl.classList.remove('hidden');
+        
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            this.hideDialog();
+        }, 3000);
+    }
+    
+    showWelcomeDialog() {
+        const dialogEl = document.getElementById('story-dialog');
+        const titleEl = document.getElementById('dialog-title');
+        const textEl = document.getElementById('dialog-text');
+        
+        titleEl.textContent = 'Portfolio Drift Racing\'e Hoş Geldin!';
+        textEl.textContent = 'Merhaba! Ben Eyüp Zafer ÜNAL. Bu oyunda arabamla drift atarak CV\'mdeki projeleri, yetenekleri ve deneyimleri toplamalısın. WASD ile sür, SPACE ile drift yap!';
+        
+        dialogEl.classList.remove('hidden');
+    }
+    
+    showVictoryDialog() {
+        const dialogEl = document.getElementById('story-dialog');
+        const titleEl = document.getElementById('dialog-title');
+        const textEl = document.getElementById('dialog-text');
+        
+        titleEl.textContent = 'Tebrikler! 🎉';
+        textEl.textContent = `Tüm portfolio öğelerini topladın! Toplam skor: ${this.score} puan. Drift skoru: ${Math.floor(this.driftScore)}. Artık portfolyoma göz atabilirsin!`;
+        
+        dialogEl.classList.remove('hidden');
+    }
+    
+    hideDialog() {
+        document.getElementById('story-dialog').classList.add('hidden');
+    }
+    
     toggleMenu() {
         document.getElementById('menu-panel').classList.toggle('hidden');
     }
@@ -338,69 +673,29 @@ class Game {
         }, 500);
     }
     
-    update() {
-        // Apply gravity
-        if (!this.isOnGround) {
-            this.velocity.y -= this.gravity;
+    showError(message) {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            loadingScreen.innerHTML = `
+                <div class="loading-content">
+                    <p style="color: #f50057; font-size: 18px;">Hata: ${message}</p>
+                    <button onclick="window.location.reload()" 
+                            style="margin-top: 15px; padding: 8px 16px; background: #f50057; 
+                                   color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Yeniden Yükle
+                    </button>
+                </div>
+            `;
         }
-        
-        // Handle movement input
-        const direction = new THREE.Vector3();
-        
-        if (this.keys.forward) direction.z -= 1;
-        if (this.keys.backward) direction.z += 1;
-        if (this.keys.left) direction.x -= 1;
-        if (this.keys.right) direction.x += 1;
-        
-        if (direction.length() > 0) {
-            direction.normalize().multiplyScalar(this.moveSpeed);
-            this.velocity.x = direction.x;
-            this.velocity.z = direction.z;
-            
-            // Rotate character to face movement direction
-            this.character.rotation.y = Math.atan2(direction.x, direction.z);
-        } else {
-            // Apply friction
-            this.velocity.x *= 0.9;
-            this.velocity.z *= 0.9;
-        }
-        
-        // Handle jumping
-        if (this.keys.jump && this.isOnGround && this.canJump) {
-            this.velocity.y = this.jumpPower;
-            this.isOnGround = false;
-            this.canJump = false;
-            
-            setTimeout(() => {
-                this.canJump = true;
-            }, 1000);
-        }
-        
-        // Update position
-        this.character.position.x += this.velocity.x;
-        this.character.position.y += this.velocity.y;
-        this.character.position.z += this.velocity.z;
-        
-        // Simple ground collision detection
-        if (this.character.position.y < 1) {
-            this.character.position.y = 1;
-            this.velocity.y = 0;
-            this.isOnGround = true;
-        } else {
-            this.isOnGround = false;
-        }
-        
-        // Update camera position to follow character
-        this.camera.position.x = this.character.position.x;
-        this.camera.position.z = this.character.position.z + 5;
-        this.camera.position.y = this.character.position.y + 3;
-        this.camera.lookAt(this.character.position);
     }
     
     gameLoop() {
         const animate = () => {
-            if (this.initialized) {
-                this.update();
+            if (this.initialized && !this.loading) {
+                this.updateCarPhysics();
+                this.checkCollisions();
+                this.animateCollectibles();
+                this.updateCamera();
             }
             
             this.renderer.render(this.scene, this.camera);
@@ -413,15 +708,15 @@ class Game {
 
 // Initialize game when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM loaded, initializing game");
+    console.log("DOM loaded, initializing Portfolio Drift Game...");
     setTimeout(() => {
         try {
-            window.gameInstance = new Game();
+            window.gameInstance = new PortfolioDriftGame();
         } catch (error) {
             console.error("Failed to initialize game:", error);
-            alert("Oyun başlatılamadı: " + error.message);
+            alert("Portfolio Drift oyunu başlatılamadı: " + error.message);
         }
     }, 500);
 });
 
-console.log("Game.js file successfully loaded");
+console.log("Portfolio Drift Game.js file successfully loaded");

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dijital Macera | Eyüp Zafer ÜNAL</title>
+    <title>Portfolio Drift Racing | Eyüp Zafer ÜNAL</title>
     <link rel="stylesheet" href="css/game.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
@@ -12,32 +12,33 @@
     <div id="game-container">
         <div id="loading-screen">
             <div class="spinner"></div>
-            <p>Dijital Dünya Yükleniyor...</p>
+            <p>Portfolio Drift Racing Yükleniyor...</p>
         </div>
         
         <div id="ui-overlay">
             <div class="top-bar">
                 <div class="progress-container">
-                    <div class="progress-label">İlerleme</div>
+                    <div class="progress-label">Portfolio Toplama İlerlemesi</div>
                     <div class="progress-bar">
-                        <div class="progress-fill" id="progress-fill"></div>
+                        <div id="progress-fill" class="progress-fill"></div>
                     </div>
                 </div>
                 <div class="items-collected">
-                    <i class="fas fa-code"></i> <span id="code-fragments">0</span>/5
+                    <i class="fas fa-trophy"></i>
+                    <span id="code-fragments">0/15</span>
                 </div>
             </div>
             
             <div id="story-dialog" class="story-dialog hidden">
                 <div class="dialog-content">
-                    <h3 id="dialog-title">Hoş Geldin, Gezgin</h3>
-                    <p id="dialog-text">Dijital dünyaya hoş geldin. Burası kodların ve yaratıcılığın kesiştiği bir yer. Kayıp kod parçalarını bularak gerçek dünyaya dönmeye çalışmalısın.</p>
+                    <h3 id="dialog-title">Başlık</h3>
+                    <p id="dialog-text">Metin içeriği buraya gelecek...</p>
                 </div>
                 <button id="dialog-continue" class="btn">Devam Et</button>
             </div>
             
             <div class="controls-hint">
-                <p>Kontroller: WASD veya Ok Tuşları ile Hareket Et | Boşluk: Zıpla | E: Etkileşim</p>
+                <p><strong>Kontroller:</strong> WASD - Hareket | SPACE - Drift | ESC - Menü</p>
             </div>
             
             <div class="game-menu">
@@ -57,10 +58,7 @@
     <!-- Load Three.js first -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     
-    <!-- GLTFLoader -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/loaders/GLTFLoader.min.js"></script>
-    
-    <!-- Load game script directly - no CANNON dependency -->
+    <!-- Load game script -->
     <script type="module" src="js/game.js"></script>
 </body>
 </html>
