@@ -66,6 +66,11 @@ export class CarPhysics {
         
         // Apply general friction
         this.velocity.multiplyScalar(this.friction);
+        
+        // Prevent car from getting stuck at very low speeds
+        if (this.speed < 0.001) {
+            this.velocity.set(0, 0, 0);
+        }
     }
     
     updateEngineForce(throttle) {
@@ -80,15 +85,23 @@ export class CarPhysics {
     }
     
     updateBrakeForce(brakeInput, handbrake) {
-        // Apply regular braking only if not handbraking
-        if (!handbrake && brakeInput > 0) {
+        // Handle reverse gear logic - if stopped and brake pressed, act as reverse throttle
+        if (brakeInput > 0 && this.speed < 0.05 && !handbrake) {
+            // Car is essentially stopped, treat brake as reverse throttle
+            const reverseForce = brakeInput * this.acceleration * 0.7; // Slightly weaker reverse
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.car.mesh.quaternion);
+            const reverseVector = forward.clone().multiplyScalar(-reverseForce); // Negative for reverse
+            this.velocity.add(reverseVector);
+            return; // Don't apply braking if we're doing reverse throttle
+        }
+        
+        // Apply regular braking only if not handbraking and moving forward
+        if (!handbrake && brakeInput > 0 && this.speed > 0.01) {
             const totalBrakeForce = brakeInput * this.brakeForce;
             
             // Apply braking force opposite to velocity direction
-            if (this.speed > 0.01) {
-                const brakeVector = this.velocity.clone().normalize().multiplyScalar(-totalBrakeForce);
-                this.velocity.add(brakeVector);
-            }
+            const brakeVector = this.velocity.clone().normalize().multiplyScalar(-totalBrakeForce);
+            this.velocity.add(brakeVector);
         }
         
         // Handbrake applies lighter braking to allow drift
