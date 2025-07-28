@@ -1,23 +1,11 @@
 import { defineConfig } from 'vite';
-import { createHtmlPlugin } from 'vite-plugin-html';
 
 export default defineConfig({
-  plugins: [
-    createHtmlPlugin({
-      minify: true,
-    }),
-  ],
+  root: './',
+  base: './', // GitHub Pages için relative path
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    rollupOptions: {
-      input: {
-        main: 'src/index.html',
-        about: 'src/pages/about.html',
-        projects: 'src/pages/projects.html',
-        contact: 'src/pages/contact.html',
-      },
-    },
   },
   server: {
     port: 3000,
