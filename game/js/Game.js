@@ -146,8 +146,8 @@ export class PortfolioDriftGame {
         
         // Update UI
         this.uiSystem.updateUI();
-        this.uiSystem.updateSpeedDisplay(this.carPhysics.getSpeed(), this.carPhysics.isDrifting());
-        this.uiSystem.updateDriftDisplay(this.carPhysics.isDrifting(), this.carPhysics.getDriftScore());
+        this.uiSystem.updateSpeedDisplay(this.carPhysics.getSpeed(), this.carPhysics.getIsDrifting());
+        this.uiSystem.updateDriftDisplay(this.carPhysics.getIsDrifting(), this.carPhysics.getDriftScore());
     }
     
     handleItemCollection(collisionResult) {

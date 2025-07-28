@@ -163,7 +163,7 @@ export class CarPhysics {
     
     createDriftParticle() {
         const particleGeometry = new THREE.SphereGeometry(0.1);
-        const particleMaterial = new THREE.MeshBasicMaterial({ 
+        const particleMaterial = new THREE.MeshLambertMaterial({ 
             color: 0xffffff,
             transparent: true,
             opacity: 0.8
@@ -191,6 +191,10 @@ export class CarPhysics {
     
     getDriftScore() {
         return this.driftScore;
+    }
+    
+    getIsDrifting() {
+        return this.isDrifting;
     }
     
     getPhysicsState() {

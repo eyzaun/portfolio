@@ -113,7 +113,7 @@ export class CollectibleManager {
     addGlowEffect(group, color) {
         // Outer glow
         const glowGeometry = new THREE.SphereGeometry(2.5);
-        const glowMaterial = new THREE.MeshBasicMaterial({
+        const glowMaterial = new THREE.MeshLambertMaterial({
             color: color,
             transparent: true,
             opacity: 0.1,
@@ -128,7 +128,7 @@ export class CollectibleManager {
         // Small sparkle particles around the collectible
         for (let i = 0; i < 6; i++) {
             const sparkleGeometry = new THREE.SphereGeometry(0.1);
-            const sparkleMaterial = new THREE.MeshBasicMaterial({
+            const sparkleMaterial = new THREE.MeshLambertMaterial({
                 color: color,
                 transparent: true,
                 opacity: 0.8
@@ -255,7 +255,7 @@ export class CollectibleManager {
         for (let i = 0; i < particleCount; i++) {
             const particle = new THREE.Mesh(
                 new THREE.SphereGeometry(0.1),
-                new THREE.MeshBasicMaterial({
+                new THREE.MeshLambertMaterial({
                     color: collectible.children[0].material.color,
                     transparent: true,
                     opacity: 1
