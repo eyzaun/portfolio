@@ -1,22 +1,25 @@
-// Car Controls System - Handles input and key states
+// Car Controls System - Simple and reliable input handling
 export class CarControls {
     constructor() {
+        // Raw key states
         this.keys = {
-            accelerate: false,
-            brake: false,
-            left: false,
-            right: false,
+            accelerate: false,    // W or Up Arrow
+            brake: false,         // S or Down Arrow  
+            left: false,          // A or Left Arrow
+            right: false,         // D or Right Arrow
+            handbrake: false      // Space
+        };
+        
+        // Processed input values (0 to 1)
+        this.input = {
+            throttle: 0,
+            brake: 0,
+            steering: 0,
             handbrake: false
         };
         
-        // Input smoothing for better control feel
-        this.inputSmoothing = {
-            throttle: 0,
-            brake: 0,
-            steering: 0
-        };
-        
-        this.smoothingFactor = 0.15;
+        // Input smoothing factor
+        this.smoothing = 0.15;
         
         this.setupEventListeners();
     }
@@ -24,89 +27,126 @@ export class CarControls {
     setupEventListeners() {
         console.log("Setting up car controls...");
         
-        // Keyboard down events
+        // Key down events
         window.addEventListener('keydown', (e) => {
-            switch(e.key.toLowerCase()) {
-                case 'w':
-                case 'arrowup':
-                    this.keys.accelerate = true;
-                    break;
-                case 's':
-                case 'arrowdown':
-                    this.keys.brake = true;
-                    break;
-                case 'a':
-                case 'arrowleft':
-                    this.keys.left = true;
-                    break;
-                case 'd':
-                case 'arrowright':
-                    this.keys.right = true;
-                    break;
-                case ' ':
-                    this.keys.handbrake = true;
-                    e.preventDefault();
-                    break;
-                case 'escape':
-                    this.toggleMenu();
-                    break;
-            }
+            this.handleKeyDown(e);
         });
         
-        // Keyboard up events
+        // Key up events
         window.addEventListener('keyup', (e) => {
-            switch(e.key.toLowerCase()) {
-                case 'w':
-                case 'arrowup':
-                    this.keys.accelerate = false;
-                    break;
-                case 's':
-                case 'arrowdown':
-                    this.keys.brake = false;
-                    break;
-                case 'a':
-                case 'arrowleft':
-                    this.keys.left = false;
-                    break;
-                case 'd':
-                case 'arrowright':
-                    this.keys.right = false;
-                    break;
-                case ' ':
-                    this.keys.handbrake = false;
-                    break;
-            }
+            this.handleKeyUp(e);
         });
+    }
+    
+    handleKeyDown(e) {
+        const key = e.key.toLowerCase();
+        
+        switch(key) {
+            case 'w':
+            case 'arrowup':
+                this.keys.accelerate = true;
+                break;
+            case 's':
+            case 'arrowdown':
+                this.keys.brake = true;
+                break;
+            case 'a':
+            case 'arrowleft':
+                this.keys.left = true;
+                break;
+            case 'd':
+            case 'arrowright':
+                this.keys.right = true;
+                break;
+            case ' ':
+                this.keys.handbrake = true;
+                e.preventDefault(); // Prevent page scroll
+                break;
+            case 'escape':
+                this.toggleMenu();
+                break;
+        }
+    }
+    
+    handleKeyUp(e) {
+        const key = e.key.toLowerCase();
+        
+        switch(key) {
+            case 'w':
+            case 'arrowup':
+                this.keys.accelerate = false;
+                break;
+            case 's':
+            case 'arrowdown':
+                this.keys.brake = false;
+                break;
+            case 'a':
+            case 'arrowleft':
+                this.keys.left = false;
+                break;
+            case 'd':
+            case 'arrowright':
+                this.keys.right = false;
+                break;
+            case ' ':
+                this.keys.handbrake = false;
+                break;
+        }
     }
     
     update() {
-        // Update input smoothing for better control feel
-        this.updateInputSmoothing();
+        // Update input values with smoothing
+        this.updateThrottle();
+        this.updateBrake();
+        this.updateSteering();
+        this.updateHandbrake();
     }
     
-    updateInputSmoothing() {
-        // Throttle input
-        const targetThrottle = this.keys.accelerate ? 1 : 0;
-        this.inputSmoothing.throttle += (targetThrottle - this.inputSmoothing.throttle) * this.smoothingFactor;
+    updateThrottle() {
+        const target = this.keys.accelerate ? 1 : 0;
+        this.input.throttle += (target - this.input.throttle) * this.smoothing;
         
-        // Brake input
-        const targetBrake = this.keys.brake ? 1 : 0;
-        this.inputSmoothing.brake += (targetBrake - this.inputSmoothing.brake) * this.smoothingFactor;
+        // Clean up very small values
+        if (Math.abs(this.input.throttle) < 0.01) {
+            this.input.throttle = 0;
+        }
+    }
+    
+    updateBrake() {
+        const target = this.keys.brake ? 1 : 0;
+        this.input.brake += (target - this.input.brake) * this.smoothing;
         
-        // Steering input (corrected directions)
-        let targetSteering = 0;
-        if (this.keys.left) targetSteering = -1;  // Left should be negative
-        if (this.keys.right) targetSteering = 1;   // Right should be positive
-        this.inputSmoothing.steering += (targetSteering - this.inputSmoothing.steering) * this.smoothingFactor * 2;
+        // Clean up very small values
+        if (Math.abs(this.input.brake) < 0.01) {
+            this.input.brake = 0;
+        }
+    }
+    
+    updateSteering() {
+        let target = 0;
+        
+        if (this.keys.left) target = -1;   // Left is negative
+        if (this.keys.right) target = 1;   // Right is positive
+        
+        // Faster steering response
+        this.input.steering += (target - this.input.steering) * (this.smoothing * 3);
+        
+        // Clean up very small values
+        if (Math.abs(this.input.steering) < 0.01) {
+            this.input.steering = 0;
+        }
+    }
+    
+    updateHandbrake() {
+        this.input.handbrake = this.keys.handbrake;
     }
     
     getInputState() {
         return {
-            throttle: this.inputSmoothing.throttle,
-            brake: this.inputSmoothing.brake,
-            steering: this.inputSmoothing.steering,
-            handbrake: this.keys.handbrake,
-            rawKeys: { ...this.keys }
+            throttle: this.input.throttle,
+            brake: this.input.brake,
+            steering: this.input.steering,
+            handbrake: this.input.handbrake
         };
     }
     
@@ -117,24 +157,25 @@ export class CarControls {
         }
     }
     
-    // Helper methods for external access
-    isAccelerating() {
-        return this.keys.accelerate;
+    // Debug method to check input states
+    getDebugInfo() {
+        return {
+            keys: { ...this.keys },
+            input: { ...this.input }
+        };
     }
     
-    isBraking() {
-        return this.keys.brake;
-    }
-    
-    isTurningLeft() {
-        return this.keys.left;
-    }
-    
-    isTurningRight() {
-        return this.keys.right;
-    }
-    
-    isHandbraking() {
-        return this.keys.handbrake;
+    // Reset all inputs
+    reset() {
+        this.keys.accelerate = false;
+        this.keys.brake = false;
+        this.keys.left = false;
+        this.keys.right = false;
+        this.keys.handbrake = false;
+        
+        this.input.throttle = 0;
+        this.input.brake = 0;
+        this.input.steering = 0;
+        this.input.handbrake = false;
     }
 }
