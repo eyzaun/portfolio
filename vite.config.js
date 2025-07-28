@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: './',
-  base: './', // GitHub Pages için relative path
+  base: '/eyzaun.github.io2/', // GitHub Pages için repository base path
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
