@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: './',
-  base: '/', // .github.io repository'si için root path
+  base: '/portfolio/', // GitHub Pages için portfolio repository base path
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
