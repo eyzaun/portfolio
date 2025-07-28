@@ -209,9 +209,10 @@ export class CarPhysics {
         return {
             position: { ...this.position },
             rotation: this.rotation,
-            velocity: { ...this.velocity },
+            velocity: new THREE.Vector3(this.velocity.x, 0, this.velocity.z),
             speed: this.speed,
-            isDrifting: this.isDrifting
+            isDrifting: this.isDrifting,
+            driftIntensity: this.isDrifting ? this.speed * 0.5 : 0
         };
     }
     
