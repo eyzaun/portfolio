@@ -19,13 +19,27 @@ class PortfolioDriftGame {
         this.drift = false;
         this.driftScore = 0;
         
-        // Car physics
-        this.carSpeed = 0;
-        this.maxSpeed = 0.8;
-        this.acceleration = 0.02;
-        this.friction = 0.95;
-        this.turnSpeed = 0.03;
-        this.driftFactor = 0.9;
+        // Enhanced Car Physics
+        this.velocity = new THREE.Vector3(0, 0, 0);
+        this.angularVelocity = 0;
+        this.steerAngle = 0;
+        this.maxSteerAngle = 0.6;
+        this.wheelBase = 4; // Distance between front and rear axles
+        
+        // Physics constants
+        this.maxSpeed = 1.2;
+        this.acceleration = 0.03;
+        this.brakeForce = 0.05;
+        this.friction = 0.92;
+        this.lateralFriction = 0.85;
+        this.driftThreshold = 0.3;
+        this.driftMultiplier = 0.7;
+        
+        // Drift system
+        this.isDrifting = false;
+        this.driftAngle = 0;
+        this.driftIntensity = 0;
+        this.driftParticles = [];
         
         // Controls
         this.keys = {
@@ -34,6 +48,13 @@ class PortfolioDriftGame {
             left: false,
             right: false,
             handbrake: false
+        };
+        
+        // Input smoothing
+        this.inputSmoothing = {
+            throttle: 0,
+            brake: 0,
+            steering: 0
         };
         
         // Portfolio data from CV
@@ -225,47 +246,80 @@ class PortfolioDriftGame {
         
         this.car = new THREE.Group();
         
-        // Car body
-        const bodyGeometry = new THREE.BoxGeometry(4, 1, 8);
+        // Car body - more realistic proportions
+        const bodyGeometry = new THREE.BoxGeometry(2, 0.8, 4.5);
         const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0xe17055 });
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        body.position.y = 0.5;
+        body.position.y = 0.4;
         body.castShadow = true;
         this.car.add(body);
         
         // Car roof
-        const roofGeometry = new THREE.BoxGeometry(3, 1, 4);
+        const roofGeometry = new THREE.BoxGeometry(1.6, 0.6, 2.2);
         const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x2d3436 });
         const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-        roof.position.y = 1.5;
+        roof.position.y = 1.1;
+        roof.position.z = -0.3;
         roof.castShadow = true;
         this.car.add(roof);
         
-        // Wheels
-        const wheelGeometry = new THREE.CylinderGeometry(0.8, 0.8, 0.5);
+        // Front bumper
+        const bumperGeometry = new THREE.BoxGeometry(1.8, 0.3, 0.5);
+        const bumperMaterial = new THREE.MeshLambertMaterial({ color: 0x636e72 });
+        const frontBumper = new THREE.Mesh(bumperGeometry, bumperMaterial);
+        frontBumper.position.y = 0.15;
+        frontBumper.position.z = 2.5;
+        this.car.add(frontBumper);
+        
+        // Wheels - better positioning and size
+        const wheelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.3);
         const wheelMaterial = new THREE.MeshLambertMaterial({ color: 0x2d3436 });
+        const rimMaterial = new THREE.MeshLambertMaterial({ color: 0x74b9ff });
         
         const wheelPositions = [
-            { x: -1.8, z: 2.5 },  // Front left
-            { x: 1.8, z: 2.5 },   // Front right
-            { x: -1.8, z: -2.5 }, // Rear left
-            { x: 1.8, z: -2.5 }   // Rear right
+            { x: -1.2, z: 1.8 },  // Front left
+            { x: 1.2, z: 1.8 },   // Front right
+            { x: -1.2, z: -1.8 }, // Rear left
+            { x: 1.2, z: -1.8 }   // Rear right
         ];
         
         this.wheels = [];
+        this.frontWheels = [];
+        
         wheelPositions.forEach((pos, index) => {
+            const wheelGroup = new THREE.Group();
+            
             const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
-            wheel.position.set(pos.x, 0, pos.z);
             wheel.rotation.z = Math.PI / 2;
-            wheel.castShadow = true;
-            this.car.add(wheel);
-            this.wheels.push(wheel);
+            wheelGroup.add(wheel);
+            
+            // Add rim details
+            const rim = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.25, 0.25, 0.32),
+                rimMaterial
+            );
+            rim.rotation.z = Math.PI / 2;
+            wheelGroup.add(rim);
+            
+            wheelGroup.position.set(pos.x, 0.4, pos.z);
+            wheelGroup.castShadow = true;
+            this.car.add(wheelGroup);
+            this.wheels.push(wheelGroup);
+            
+            // Store front wheels for steering
+            if (index < 2) {
+                this.frontWheels.push(wheelGroup);
+            }
         });
         
-        // Car initial position
+        // Car initial position and physics
         this.car.position.set(0, 0, 0);
-        this.carVelocity = new THREE.Vector3(0, 0, 0);
-        this.carDirection = 0;
+        this.car.rotation.y = 0;
+        
+        // Physics initialization
+        this.velocity = new THREE.Vector3(0, 0, 0);
+        this.angularVelocity = 0;
+        this.speed = 0;
         
         this.scene.add(this.car);
     }
@@ -456,56 +510,182 @@ class PortfolioDriftGame {
     }
     
     updateCarPhysics() {
-        // Handle acceleration and braking
-        if (this.keys.accelerate) {
-            this.carSpeed = Math.min(this.carSpeed + this.acceleration, this.maxSpeed);
-        } else if (this.keys.brake) {
-            this.carSpeed = Math.max(this.carSpeed - this.acceleration * 2, -this.maxSpeed * 0.5);
-        } else {
-            this.carSpeed *= this.friction;
-        }
+        const deltaTime = 1/60; // Assuming 60fps
         
-        // Handle steering
-        if (this.keys.left && Math.abs(this.carSpeed) > 0.01) {
-            this.carDirection += this.turnSpeed * (this.carSpeed > 0 ? 1 : -1);
-        }
-        if (this.keys.right && Math.abs(this.carSpeed) > 0.01) {
-            this.carDirection -= this.turnSpeed * (this.carSpeed > 0 ? 1 : -1);
-        }
+        // Smooth input handling
+        this.updateInputSmoothing();
         
-        // Handle handbrake for drifting
-        if (this.keys.handbrake && Math.abs(this.carSpeed) > 0.2) {
-            this.drift = true;
-            this.carSpeed *= 0.9;
-            this.driftScore += Math.abs(this.carSpeed) * 10;
-        } else {
-            this.drift = false;
-        }
+        // Calculate forces
+        const throttle = this.inputSmoothing.throttle;
+        const brakeInput = this.inputSmoothing.brake;
+        const steerInput = this.inputSmoothing.steering;
         
-        // Update car velocity based on direction
-        this.carVelocity.x = Math.sin(this.carDirection) * this.carSpeed;
-        this.carVelocity.z = Math.cos(this.carDirection) * this.carSpeed;
+        // Current speed
+        this.speed = this.velocity.length();
         
-        // Apply drift effect
-        if (this.drift) {
-            this.carVelocity.multiplyScalar(this.driftFactor);
-        }
+        // Steering - only effective when moving
+        const speedFactor = Math.min(this.speed * 3, 1);
+        this.steerAngle = steerInput * this.maxSteerAngle * speedFactor;
         
-        // Update car position
-        this.car.position.add(this.carVelocity);
-        this.car.rotation.y = this.carDirection;
-        
-        // Animate wheels
-        this.wheels.forEach(wheel => {
-            wheel.rotation.x += this.carSpeed * 2;
+        // Update front wheel steering visuals
+        this.frontWheels.forEach(wheel => {
+            wheel.rotation.y = this.steerAngle;
         });
         
-        // Update speed display
-        this.speed = Math.abs(this.carSpeed) * 100;
-        document.getElementById('code-fragments').textContent = Math.floor(this.speed);
+        // Engine force
+        const engineForce = throttle * this.acceleration;
+        
+        // Brake force
+        const totalBrakeForce = brakeInput * this.brakeForce + 
+                               (this.keys.handbrake ? this.brakeForce * 1.5 : 0);
+        
+        // Calculate car's forward and right vectors
+        const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.car.quaternion);
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.car.quaternion);
+        
+        // Apply engine force in forward direction
+        const engineVector = forward.clone().multiplyScalar(engineForce);
+        this.velocity.add(engineVector);
+        
+        // Apply braking force opposite to velocity direction
+        if (this.speed > 0.01) {
+            const brakeVector = this.velocity.clone().normalize().multiplyScalar(-totalBrakeForce);
+            this.velocity.add(brakeVector);
+        }
+        
+        // Lateral friction and drift calculation
+        const velocityDirection = this.velocity.clone().normalize();
+        const forwardComponent = velocityDirection.dot(forward);
+        const rightComponent = velocityDirection.dot(right);
+        
+        // Calculate drift angle
+        this.driftAngle = Math.atan2(rightComponent, Math.abs(forwardComponent));
+        
+        // Determine if we're drifting
+        const lateralSpeed = Math.abs(rightComponent * this.speed);
+        this.isDrifting = lateralSpeed > this.driftThreshold && this.keys.handbrake;
+        this.driftIntensity = Math.min(lateralSpeed / 0.8, 1);
+        
+        // Apply lateral friction
+        let lateralFrictionCoeff = this.lateralFriction;
+        if (this.isDrifting) {
+            lateralFrictionCoeff *= this.driftMultiplier;
+            this.driftScore += this.driftIntensity * 2;
+        }
+        
+        // Separate velocity into forward and lateral components
+        const forwardVelocity = forward.clone().multiplyScalar(forward.dot(this.velocity));
+        const lateralVelocity = right.clone().multiplyScalar(right.dot(this.velocity));
+        
+        // Apply lateral friction
+        lateralVelocity.multiplyScalar(lateralFrictionCoeff);
+        
+        // Recombine velocities
+        this.velocity = forwardVelocity.add(lateralVelocity);
+        
+        // Apply general friction
+        this.velocity.multiplyScalar(this.friction);
+        
+        // Angular velocity calculation (Ackermann steering)
+        if (Math.abs(this.steerAngle) > 0.01 && this.speed > 0.01) {
+            // Calculate angular velocity based on Ackermann steering geometry
+            const turningRadius = this.wheelBase / Math.tan(Math.abs(this.steerAngle));
+            this.angularVelocity = (this.speed / turningRadius) * Math.sign(this.steerAngle);
+            
+            // Limit angular velocity
+            this.angularVelocity = Math.max(-0.1, Math.min(0.1, this.angularVelocity));
+        } else {
+            this.angularVelocity *= 0.9; // Damping
+        }
+        
+        // Update car rotation
+        this.car.rotation.y += this.angularVelocity;
+        
+        // Update car position
+        this.car.position.add(this.velocity);
+        
+        // Animate wheels based on movement
+        const wheelRotationSpeed = this.speed * 8;
+        this.wheels.forEach(wheel => {
+            wheel.children[0].rotation.x += wheelRotationSpeed * (this.velocity.z > 0 ? 1 : -1);
+        });
+        
+        // Visual effects for drifting
+        this.updateDriftEffects();
+        
+        // Update UI with current speed (convert to km/h-like display)
+        const displaySpeed = Math.floor(this.speed * 200);
+        const speedElement = document.querySelector('.controls-hint p');
+        if (speedElement && this.isDrifting) {
+            speedElement.innerHTML = `<strong>🔥 DRIFT! Speed: ${displaySpeed} km/h | WASD - Hareket | SPACE - Drift | ESC - Menü</strong>`;
+        } else if (speedElement) {
+            speedElement.innerHTML = `<strong>Speed: ${displaySpeed} km/h | WASD - Hareket | SPACE - Drift | ESC - Menü</strong>`;
+        }
+    }
+    
+    updateInputSmoothing() {
+        const smoothingFactor = 0.15;
+        
+        // Throttle
+        const targetThrottle = this.keys.accelerate ? 1 : 0;
+        this.inputSmoothing.throttle += (targetThrottle - this.inputSmoothing.throttle) * smoothingFactor;
+        
+        // Brake
+        const targetBrake = this.keys.brake ? 1 : 0;
+        this.inputSmoothing.brake += (targetBrake - this.inputSmoothing.brake) * smoothingFactor;
+        
+        // Steering
+        let targetSteering = 0;
+        if (this.keys.left) targetSteering = 1;
+        if (this.keys.right) targetSteering = -1;
+        this.inputSmoothing.steering += (targetSteering - this.inputSmoothing.steering) * smoothingFactor * 2;
+    }
+    
+    updateDriftEffects() {
+        if (this.isDrifting && this.driftIntensity > 0.3) {
+            // Create drift particle effects (simplified)
+            if (Math.random() < 0.3) {
+                this.createDriftParticle();
+            }
+        }
+        
+        // Update existing particles
+        this.driftParticles.forEach((particle, index) => {
+            particle.scale.multiplyScalar(0.95);
+            particle.material.opacity *= 0.95;
+            
+            if (particle.scale.x < 0.1) {
+                this.scene.remove(particle);
+                this.driftParticles.splice(index, 1);
+            }
+        });
+    }
+    
+    createDriftParticle() {
+        const particleGeometry = new THREE.SphereGeometry(0.1);
+        const particleMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.8
+        });
+        
+        const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+        
+        // Position behind the car
+        const carBack = new THREE.Vector3(0, 0, -2).applyQuaternion(this.car.quaternion);
+        particle.position.copy(this.car.position).add(carBack);
+        particle.position.y = 0.1;
+        
+        // Add some randomness
+        particle.position.x += (Math.random() - 0.5) * 2;
+        particle.position.z += (Math.random() - 0.5) * 2;
+        
+        this.scene.add(particle);
+        this.driftParticles.push(particle);
     }
     
     checkCollisions() {
+        // Check collectible collisions
         this.collectibles.forEach((collectible, index) => {
             if (!collectible.userData.collected) {
                 const distance = this.car.position.distanceTo(collectible.position);
@@ -516,17 +696,33 @@ class PortfolioDriftGame {
             }
         });
         
-        // Keep car on track (simple boundary)
-        const maxDistance = 90;
+        // Enhanced boundary checking with collision response
+        const maxDistance = 85;
         const carDistance = Math.sqrt(this.car.position.x ** 2 + this.car.position.z ** 2);
         
         if (carDistance > maxDistance) {
-            // Push car back towards center
-            const angle = Math.atan2(this.car.position.z, this.car.position.x);
-            this.car.position.x = Math.cos(angle) * maxDistance;
-            this.car.position.z = Math.sin(angle) * maxDistance;
-            this.carSpeed *= 0.5; // Slow down when hitting boundary
+            // Calculate collision normal (direction from center to car)
+            const normal = new THREE.Vector3(this.car.position.x, 0, this.car.position.z).normalize();
+            
+            // Reflect velocity off the boundary
+            const velocityDotNormal = this.velocity.dot(normal);
+            if (velocityDotNormal > 0) {
+                // Remove the component of velocity going into the wall
+                const reflection = normal.multiplyScalar(velocityDotNormal * 1.5);
+                this.velocity.sub(reflection);
+            }
+            
+            // Push car back to safe position
+            const safePosition = normal.multiplyScalar(maxDistance * 0.98);
+            this.car.position.x = safePosition.x;
+            this.car.position.z = safePosition.z;
+            
+            // Add collision effect
+            this.velocity.multiplyScalar(0.3); // Lose speed on collision
         }
+        
+        // Keep car on ground
+        this.car.position.y = 0;
     }
     
     collectItem(collectible, index) {
@@ -576,6 +772,19 @@ class PortfolioDriftGame {
         if (itemsDisplay) {
             itemsDisplay.textContent = `${totalCollected}/${this.totalCollectibles}`;
         }
+        
+        // Update drift score display if drifting
+        if (this.isDrifting && this.driftIntensity > 0.5) {
+            const progressLabel = document.querySelector('.progress-label');
+            if (progressLabel) {
+                progressLabel.textContent = `🔥 DRIFT COMBO: ${Math.floor(this.driftScore)} | Portfolio: ${totalCollected}/${this.totalCollectibles}`;
+            }
+        } else {
+            const progressLabel = document.querySelector('.progress-label');
+            if (progressLabel) {
+                progressLabel.textContent = 'Portfolio Toplama İlerlemesi';
+            }
+        }
     }
     
     animateCollectibles() {
@@ -593,15 +802,40 @@ class PortfolioDriftGame {
     }
     
     updateCamera() {
-        // Follow car with smooth camera movement
-        const idealOffset = new THREE.Vector3(0, 8, 12);
-        idealOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.carDirection);
+        // Enhanced camera follow system
+        const carPosition = this.car.position.clone();
+        const carRotation = this.car.rotation.y;
         
-        const idealPosition = this.car.position.clone().add(idealOffset);
+        // Calculate ideal camera position based on car speed and direction
+        const speedFactor = Math.min(this.speed * 2, 1);
+        const baseDistance = 12 + speedFactor * 8;
+        const baseHeight = 6 + speedFactor * 4;
         
-        // Smooth camera movement
-        this.camera.position.lerp(idealPosition, 0.1);
-        this.camera.lookAt(this.car.position);
+        // Camera offset behind the car
+        const cameraOffset = new THREE.Vector3(0, baseHeight, baseDistance);
+        
+        // Apply car rotation to offset
+        cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), carRotation);
+        
+        // Add some camera shake during drift
+        if (this.isDrifting) {
+            const shakeIntensity = this.driftIntensity * 0.5;
+            cameraOffset.x += (Math.random() - 0.5) * shakeIntensity;
+            cameraOffset.y += (Math.random() - 0.5) * shakeIntensity * 0.5;
+        }
+        
+        const idealPosition = carPosition.clone().add(cameraOffset);
+        
+        // Smooth camera movement with variable lerp based on speed
+        const lerpFactor = 0.08 + speedFactor * 0.02;
+        this.camera.position.lerp(idealPosition, lerpFactor);
+        
+        // Look ahead of the car based on velocity
+        const lookAhead = this.velocity.clone().multiplyScalar(3);
+        const lookTarget = carPosition.clone().add(lookAhead);
+        lookTarget.y += 2;
+        
+        this.camera.lookAt(lookTarget);
     }
     
     showCollectionDialog(itemData) {
