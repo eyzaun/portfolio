@@ -1,6 +1,19 @@
 // Main JavaScript functionality for the portfolio website
 
 document.addEventListener("DOMContentLoaded", function() {
+    // Loading Screen
+    const loadingScreen = document.getElementById('loading-screen');
+    
+    // Hide loading screen after page load
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            loadingScreen.classList.add('fade-out');
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+            }, 500);
+        }, 1000); // 1 second delay for better UX
+    });
+
     // Custom cursor
     const cursor = document.querySelector(".cursor");
     
