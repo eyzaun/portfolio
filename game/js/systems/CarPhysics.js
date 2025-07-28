@@ -1,142 +1,142 @@
-// Car Physics System - Realistic car physics and drift mechanics
+// Car Physics System - Simple and working car physics
 export class CarPhysics {
     constructor(car, scene) {
         this.car = car;
         this.scene = scene;
         
-        // Physics state
-        this.velocity = new THREE.Vector3(0, 0, 0);
-        this.angularVelocity = 0;
+        // Car state
+        this.position = { x: 0, y: 0, z: 0 };
+        this.rotation = 0; // Y-axis rotation in radians
+        this.velocity = { x: 0, z: 0 };
         this.speed = 0;
         
-        // Car orientation and position
-        this.position = new THREE.Vector3(0, 0, 0);
-        this.rotation = 0; // Y-axis rotation in radians
+        // Physics settings
+        this.maxSpeed = 1.5;
+        this.acceleration = 0.06;
+        this.friction = 0.9;
+        this.turnSpeed = 0.025;
+        this.brakeForce = 0.08;
         
-        // Physics constants
-        this.maxSpeed = 2.0;
-        this.acceleration = 0.08;
-        this.brakeForce = 0.12;
-        this.friction = 0.88;
-        this.steeringSensitivity = 0.03;
-        this.maxSteerAngle = 0.8;
-        
-        // Drift system
-        this.driftThreshold = 0.4;
+        // Drift settings
         this.isDrifting = false;
         this.driftScore = 0;
         this.driftParticles = [];
+        
+        // Initialize car position
+        this.updateCarTransform();
     }
     
     update(inputState) {
-        // Get clean input values
+        // Get input
         const throttle = inputState.throttle || 0;
         const brake = inputState.brake || 0;
         const steering = inputState.steering || 0;
         const handbrake = inputState.handbrake || false;
         
-        // Update position from car mesh
-        this.position.copy(this.car.mesh.position);
-        this.rotation = this.car.mesh.rotation.y;
-        
         // Calculate movement
-        this.updateMovement(throttle, brake, steering, handbrake);
+        this.handleAcceleration(throttle, brake, handbrake);
+        this.handleSteering(steering);
+        this.updatePosition();
+        this.updateCarTransform();
+        this.updateDrift(handbrake);
+        this.updateWheels();
         
-        // Update car mesh position and rotation
-        this.car.mesh.position.copy(this.position);
-        this.car.mesh.rotation.y = this.rotation;
-        
-        // Update visuals
-        this.updateWheelSteering(steering);
-        this.car.animateWheels(this.speed, this.velocity);
-        this.updateDriftEffects();
+        // Update speed for UI
+        this.speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
     }
     
-    updateMovement(throttle, brake, steering, handbrake) {
-        // Calculate forward and right vectors based on car rotation
-        const forward = new THREE.Vector3(
-            -Math.sin(this.rotation), 
-            0, 
-            -Math.cos(this.rotation)
-        );
-        const right = new THREE.Vector3(
-            Math.cos(this.rotation), 
-            0, 
-            -Math.sin(this.rotation)
-        );
-        
-        // Handle forward movement
+    handleAcceleration(throttle, brake, handbrake) {
+        // Forward/backward movement
         if (throttle > 0) {
-            const forwardForce = forward.clone().multiplyScalar(throttle * this.acceleration);
-            this.velocity.add(forwardForce);
+            // Accelerate forward
+            const forwardX = -Math.sin(this.rotation) * throttle * this.acceleration;
+            const forwardZ = -Math.cos(this.rotation) * throttle * this.acceleration;
+            this.velocity.x += forwardX;
+            this.velocity.z += forwardZ;
         }
         
-        // Handle reverse movement
         if (brake > 0 && this.speed < 0.1) {
-            // When stopped, brake acts as reverse
-            const reverseForce = forward.clone().multiplyScalar(-brake * this.acceleration * 0.6);
-            this.velocity.add(reverseForce);
-        } else if (brake > 0 && this.speed > 0.1) {
-            // When moving, brake slows down
-            const brakeForce = this.velocity.clone().normalize().multiplyScalar(-brake * this.brakeForce);
-            this.velocity.add(brakeForce);
+            // Reverse when stopped
+            const reverseX = Math.sin(this.rotation) * brake * this.acceleration * 0.6;
+            const reverseZ = Math.cos(this.rotation) * brake * this.acceleration * 0.6;
+            this.velocity.x += reverseX;
+            this.velocity.z += reverseZ;
+        } else if (brake > 0) {
+            // Normal braking
+            this.velocity.x *= (1 - brake * this.brakeForce);
+            this.velocity.z *= (1 - brake * this.brakeForce);
         }
         
-        // Handle handbrake (for drifting)
-        if (handbrake && this.speed > 0.2) {
-            // Light braking + reduced lateral grip for drift
-            const lightBrake = this.velocity.clone().normalize().multiplyScalar(-this.brakeForce * 0.3);
-            this.velocity.add(lightBrake);
-            this.isDrifting = true;
+        // Handbrake (light braking for drift)
+        if (handbrake) {
+            this.velocity.x *= 0.97;
+            this.velocity.z *= 0.97;
+            this.isDrifting = this.speed > 0.3;
         } else {
             this.isDrifting = false;
         }
         
-        // Calculate current speed
-        this.speed = this.velocity.length();
-        
-        // Limit maximum speed
-        if (this.speed > this.maxSpeed) {
-            this.velocity.normalize().multiplyScalar(this.maxSpeed);
-            this.speed = this.maxSpeed;
-        }
-        
-        // Handle steering (only when moving)
-        if (Math.abs(steering) > 0.1 && this.speed > 0.1) {
-            const steerAmount = steering * this.steeringSensitivity * this.speed;
-            this.rotation += steerAmount;
-        }
-        
         // Apply friction
-        this.velocity.multiplyScalar(this.friction);
+        this.velocity.x *= this.friction;
+        this.velocity.z *= this.friction;
         
-        // Update position
-        this.position.add(this.velocity);
-        
-        // Reset very small velocities to prevent jitter
-        if (this.speed < 0.01) {
-            this.velocity.set(0, 0, 0);
-            this.speed = 0;
+        // Limit max speed
+        const currentSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
+        if (currentSpeed > this.maxSpeed) {
+            const scale = this.maxSpeed / currentSpeed;
+            this.velocity.x *= scale;
+            this.velocity.z *= scale;
         }
         
-        // Update drift score
+        // Stop micro movements
+        if (Math.abs(this.velocity.x) < 0.001) this.velocity.x = 0;
+        if (Math.abs(this.velocity.z) < 0.001) this.velocity.z = 0;
+    }
+    
+    handleSteering(steering) {
+        // Only steer when moving
+        if (this.speed > 0.1 && Math.abs(steering) > 0.1) {
+            this.rotation += steering * this.turnSpeed * this.speed;
+        }
+        
+        // Keep rotation in bounds
+        while (this.rotation > Math.PI) this.rotation -= Math.PI * 2;
+        while (this.rotation < -Math.PI) this.rotation += Math.PI * 2;
+    }
+    
+    updatePosition() {
+        // Update position based on velocity
+        this.position.x += this.velocity.x;
+        this.position.z += this.velocity.z;
+        
+        // Boundary checking (circular track)
+        const distanceFromCenter = Math.sqrt(this.position.x * this.position.x + this.position.z * this.position.z);
+        const maxDistance = 80;
+        
+        if (distanceFromCenter > maxDistance) {
+            // Push back to safe area
+            const angle = Math.atan2(this.position.z, this.position.x);
+            this.position.x = Math.cos(angle) * maxDistance;
+            this.position.z = Math.sin(angle) * maxDistance;
+            
+            // Reduce velocity on collision
+            this.velocity.x *= 0.3;
+            this.velocity.z *= 0.3;
+        }
+    }
+    
+    updateCarTransform() {
+        // Apply position and rotation to car mesh
+        this.car.mesh.position.set(this.position.x, 0, this.position.z);
+        this.car.mesh.rotation.y = this.rotation;
+    }
+    
+    updateDrift(handbrake) {
         if (this.isDrifting) {
             this.driftScore += this.speed * 2;
-        }
-    }
-    
-    updateWheelSteering(steering) {
-        // Update front wheel steering visuals
-        if (this.car.updateSteeringWheels) {
-            const steerAngle = steering * this.maxSteerAngle;
-            this.car.updateSteeringWheels(steerAngle);
-        }
-    }
-    
-    updateDriftEffects() {
-        if (this.isDrifting && this.speed > 0.3) {
-            // Create drift particle effects
-            if (Math.random() < 0.4) {
+            
+            // Create drift particles
+            if (Math.random() < 0.3) {
                 this.createDriftParticle();
             }
         }
@@ -153,6 +153,21 @@ export class CarPhysics {
         });
     }
     
+    updateWheels() {
+        // Update steering wheels
+        if (this.car.updateSteeringWheels) {
+            // Calculate steering angle for visual
+            const steerAngle = 0; // We'll implement this when we have proper input
+            this.car.updateSteeringWheels(steerAngle);
+        }
+        
+        // Animate wheel rotation
+        if (this.car.animateWheels) {
+            const velocity = { x: this.velocity.x, y: 0, z: this.velocity.z };
+            this.car.animateWheels(this.speed, velocity);
+        }
+    }
+    
     createDriftParticle() {
         const particleGeometry = new THREE.SphereGeometry(0.15);
         const particleMaterial = new THREE.MeshLambertMaterial({ 
@@ -164,18 +179,14 @@ export class CarPhysics {
         const particle = new THREE.Mesh(particleGeometry, particleMaterial);
         
         // Position behind the car
-        const backward = new THREE.Vector3(
-            Math.sin(this.rotation), 
-            0, 
-            Math.cos(this.rotation)
-        ).multiplyScalar(2.5);
+        const behindX = this.position.x + Math.sin(this.rotation) * 2;
+        const behindZ = this.position.z + Math.cos(this.rotation) * 2;
         
-        particle.position.copy(this.position).add(backward);
-        particle.position.y = 0.1;
-        
-        // Add randomness
-        particle.position.x += (Math.random() - 0.5) * 1.5;
-        particle.position.z += (Math.random() - 0.5) * 1.5;
+        particle.position.set(
+            behindX + (Math.random() - 0.5) * 1.5,
+            0.1,
+            behindZ + (Math.random() - 0.5) * 1.5
+        );
         
         this.scene.add(particle);
         this.driftParticles.push(particle);
@@ -196,11 +207,11 @@ export class CarPhysics {
     
     getPhysicsState() {
         return {
-            velocity: this.velocity.clone(),
+            position: { ...this.position },
+            rotation: this.rotation,
+            velocity: { ...this.velocity },
             speed: this.speed,
-            isDrifting: this.isDrifting,
-            position: this.position.clone(),
-            rotation: this.rotation
+            isDrifting: this.isDrifting
         };
     }
     
@@ -212,19 +223,21 @@ export class CarPhysics {
         return this.rotation;
     }
     
-    // Reset car to starting position
+    // Reset method
     reset() {
-        this.velocity.set(0, 0, 0);
-        this.position.set(0, 0, 0);
+        this.position = { x: 0, y: 0, z: 0 };
         this.rotation = 0;
+        this.velocity = { x: 0, z: 0 };
         this.speed = 0;
-        this.driftScore = 0;
         this.isDrifting = false;
+        this.driftScore = 0;
         
         // Clear particles
         this.driftParticles.forEach(particle => {
             this.scene.remove(particle);
         });
         this.driftParticles = [];
+        
+        this.updateCarTransform();
     }
 }
